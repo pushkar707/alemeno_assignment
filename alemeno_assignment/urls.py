@@ -16,10 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from core.views import home,register
+from core.views import home,register,create_loan
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home,name='home'),
     path('register', register,name='register'),
+    path('create-loan', create_loan,name='create_loan'),
 ]

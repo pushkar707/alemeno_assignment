@@ -16,9 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from core.views import ingest_data_view
+from core.views import home
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', ingest_data_view,name='insert-data'),
+    path('', home,name='home'),
 ]

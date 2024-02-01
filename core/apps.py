@@ -13,15 +13,14 @@ class CoreConfig(AppConfig):
             from core.models import Customer,Loan
 
             @shared_task
-            def upload_initial_data(customer_file_path, loan_file_path):    
-                df = pd.read_excel(customer_file_path)
-                for index, row in df.iterrows():
-                    Customer.objects.create(**row)
-
-                df = pd.read_excel(loan_file_path)
-                for index, row in df.iterrows():
-                    Loan.objects.create(**row)
-
+            def upload_initial_data(customer_file_path, loan_file_path):  
+                def process_excel_file(file_path, model_class):
+                    df = pd.read_excel(file_path)
+                    model_objects = [model_class(**row) for index, row in df.iterrows()]
+                    model_class.objects.bulk_create(model_objects)
+  
+                process_excel_file(customer_file_path, Customer)
+                process_excel_file(loan_file_path, Loan)
 
             customer_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'customer_data.xlsx')
             loan_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'loan_data.xlsx')

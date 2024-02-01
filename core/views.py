@@ -5,7 +5,8 @@ from core.models import Customer, Loan
 from datetime import date
 from django.views.decorators.http import require_POST
 from django.core.serializers import serialize
-
+from .pydantic_model import CheckEligibility
+from pydantic_core import ValidationError
 from core.utils import calculate_monthly_installment, round_to_nearest_lakh
 
 
@@ -40,6 +41,15 @@ def register(request):
     else:
         return JsonResponse({"error": "Missing required body data"})
 
+@require_POST
+def check_eligibility(request):
+    print(json.loads(request.body))
+    try:
+        body = CheckEligibility.model_validate(json.loads(request.body))
+    except ValidationError as e:
+        return JsonResponse({"error":True,"message":e})
+    
+    body = body.to_dict()
 
 @require_POST
 def create_loan(request):
@@ -57,6 +67,7 @@ def create_loan(request):
             if not customer:
                 return JsonResponse({"error": True, "message": "Customer not found"})
 
+            # Checking if loan amount is within approval
             loan_approved = loan_amount < (
                 customer.approved_limit - customer.current_debt
             )
@@ -67,6 +78,7 @@ def create_loan(request):
                 )
                 return JsonResponse({"error": True, "message": message})
 
+            # Editing customer's current debt
             customer.current_debt = (customer.current_debt or 0) + loan_amount
             customer.save()
             monthly_installment = round(
@@ -96,7 +108,6 @@ def create_loan(request):
     else:
         pass
 
-
 def view_loan(request, loan_id):
     try:
         loan = Loan.objects.filter(id=loan_id).values('id','loan_id','loan_amount','interest_rate','monthly_repayment','tenure','customer_id','customer__first_name','customer__last_name','customer__age')
@@ -124,6 +135,8 @@ def view_customer_loan(request,customer_id):
         loan_obj.pop('emis_paid_on_time')
         loan_obj.pop('tenure')
         return loan_obj
+    
+
     try:
         loans = Loan.objects.filter(customer_id=customer_id).values('loan_id','loan_amount','interest_rate',"monthly_repayment",'emis_paid_on_time','tenure')
         loans = list(loans)

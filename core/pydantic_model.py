@@ -5,3 +5,9 @@ class CustomerCreate(BaseModel):
 
 class LoanCreate(BaseModel):
     pass
+
+class CheckEligibility(BaseModel):
+    customer_id: int
+    loan_amount: float
+    interest_rate: float
+    tenure: int

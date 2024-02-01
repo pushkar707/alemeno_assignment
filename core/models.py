@@ -32,7 +32,7 @@ class Customer(models.Model):
     
 class Loan(models.Model):
     customer = models.ForeignKey(Customer,on_delete=models.CASCADE,null=True)
-    loan_id = models.IntegerField() # There are repeating loan_id in data, hence I stored it seperately, and id is now auto generated
+    loan_id = models.IntegerField(null=True) # There are repeating loan_id in data, hence I stored it seperately, and id is now auto generated
     loan_amount = models.IntegerField()
     tenure = models.FloatField()
     interest_rate = models.FloatField()

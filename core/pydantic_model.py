@@ -1,10 +1,11 @@
 from pydantic import BaseModel
 
 class CustomerCreate(BaseModel):
-    pass
-
-class LoanCreate(BaseModel):
-    pass
+    first_name:str
+    last_name:str
+    age: int
+    monthly_income: int
+    phone_number: int
 
 class CheckEligibility(BaseModel):
     customer_id: int

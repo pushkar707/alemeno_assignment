@@ -2,12 +2,12 @@ import json
 from django.http import JsonResponse
 from django.shortcuts import render, HttpResponse, redirect
 from core.models import Customer, Loan
-from datetime import date
+from datetime import date, datetime
 from django.views.decorators.http import require_POST
 from django.core.serializers import serialize
 from .pydantic_model import CheckEligibility
 from pydantic_core import ValidationError
-from core.utils import calculate_monthly_installment, round_to_nearest_lakh
+from core.utils import calculate_credit_score, calculate_interest_rate, calculate_monthly_installment, calculate_total_months, round_to_nearest_lakh
 
 
 def home(request):
@@ -43,13 +43,36 @@ def register(request):
 
 @require_POST
 def check_eligibility(request):
-    print(json.loads(request.body))
     try:
         body = CheckEligibility.model_validate(json.loads(request.body))
     except ValidationError as e:
         return JsonResponse({"error":True,"message":e})
     
-    body = body.to_dict()
+    body = dict(body)
+    try:
+        customer = Customer.objects.get(customer_id=body['customer_id'])
+    except Customer.DoesNotExist:
+        return JsonResponse({"error":True,"message":"Customer not found"})
+    
+    approved = True
+
+    if customer.approved_limit < (customer.current_debt or 0):
+        message = ("You already have loans above the approved limit")
+        approved = False
+
+    loans = customer.loan_set.all()
+    credit_score = calculate_credit_score(loans,customer.approved_limit,customer.current_debt,customer.monthly_salary)
+    if(credit_score < 10):
+        approved = False
+    corrected_interest_rate = max(body["interest_rate"],calculate_interest_rate(credit_score,body['interest_rate'])) if approved else None
+    print(credit_score, corrected_interest_rate)
+    return JsonResponse({
+        "customer_id":customer.customer_id,
+        "approval": approved,
+        "interest_rate": body['interest_rate'],
+        "corrected_interest_rate":corrected_interest_rate,
+        "monthly_installment": calculate_monthly_installment(body['loan_amount'],corrected_interest_rate,body['tenure']) if approved else None
+    })
 
 @require_POST
 def create_loan(request):
@@ -69,7 +92,7 @@ def create_loan(request):
 
             # Checking if loan amount is within approval
             loan_approved = loan_amount < (
-                customer.approved_limit - customer.current_debt
+                customer.approved_limit - (customer.current_debt or 0)
             )
             if not loan_approved:
                 message = (

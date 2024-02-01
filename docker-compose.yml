@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  django:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: django
+    command: >
+            bash -c "python manage.py makemigrations &&
+                     python manage.py migrate &&
+                     python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+      - POSTGRES_DB_NAME=alemeno
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=helloworld
+      - POSTGRES_HOSTNAME=pgdb
+      - POSTGRES_DB_PORT=5432
+    ports:
+      - "8000:8000"
+    depends_on:
+      - pgdb
+      - redis
+
+  celery:
+    build: .
+    command: celery -A alemeno_assignment worker -l info
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+      - POSTGRES_DB_NAME=alemeno
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=helloworld
+      - POSTGRES_HOSTNAME=pgdb
+      - POSTGRES_DB_PORT=5432
+    depends_on:
+      - pgdb
+      - django
+      - redis
+
+  pgdb:
+    image: postgres:latest
+    container_name: pgdb
+    environment:
+      - POSTGRES_DB=alemeno
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=helloworld
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+    ports:
+     - "5432:5432"
+
+  redis:
+    image: "redis:alpine"
+
+volumes:
+  pgdata:
+
+  
